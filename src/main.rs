@@ -1,40 +1,54 @@
-use std::{io::{Read, Write}, net::{TcpListener, TcpStream}}; 
-use std::fs;
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use std::process::Command;
 
-fn main() {
-    const HOST: &str = "127.0.0.1";
-    const PORT : &str ="8477";
+async fn render_react_component() -> Result<String, std::io::Error> {
+    let output = Command::new("node")
+        .arg("./app/render.js") 
+        .output()?;
 
-    let end_point: String = HOST.to_owned() + ":" + PORT;
-
-    let listener = TcpListener::bind(end_point).unwrap();
-
-    for stream in listener.incoming() {
-        let _stream = stream.unwrap();
-        println!("Connection estabilished");
-        handle_connection(_stream);
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ))
     }
-
 }
 
-fn handle_connection(mut stream: TcpStream){
-    let mut buffer: [u8; 1024] = [0; 1024];
+async fn index() -> impl Responder {
+    let rendered_html = match render_react_component().await {
+        Ok(html) => html,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Rendering error: {}", e)),
+    };
 
-    stream.read(&mut buffer).unwrap();
-    println!("Request: {}", String::from_utf8_lossy(&buffer[..]));
-    let content = fs::read_to_string("index.html");
-    let error = b"HTTP/1.1 500 Page Not Found\r\n\r\n";
- 
-    match content {
-        Ok(content) => {
-            let response  = format!(
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
-                content.len(),
-                content
-            );
-            stream.write(response.as_bytes()).unwrap();
-            stream.flush().unwrap();
-        }
-        Err(_) => {stream.write(error).unwrap();stream.flush().unwrap();}
-    }
+    let html = format!(
+        r#"
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>React SSR with Rust</title>
+        </head>
+        <body>
+            <div id="app">{}</div>
+            <script src="/dist/bundle.js"></script>
+        </body>
+        </html>
+        "#,
+        rendered_html
+    );
+
+    HttpResponse::Ok().content_type("text/html; charset=utf-8").body(html)
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .route("/", web::get().to(index))
+            .service(actix_files::Files::new("/dist", "./dist").show_files_listing())
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
 }
