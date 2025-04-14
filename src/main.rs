@@ -5,7 +5,7 @@ async fn render_react_component() -> Result<String, std::io::Error> {
     let output = Command::new("node")
         .arg("./app/render.js") 
         .output()?;
-
+    
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {
@@ -21,7 +21,6 @@ async fn index() -> impl Responder {
         Ok(html) => html,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Rendering error: {}", e)),
     };
-
     let html = format!(
         r#"
         <!DOCTYPE html>
@@ -44,7 +43,7 @@ async fn index() -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
-        App::new()
+        App::new() 
             .route("/", web::get().to(index))
             .service(actix_files::Files::new("/dist", "./dist").show_files_listing())
     })

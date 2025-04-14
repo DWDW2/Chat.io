@@ -4,7 +4,7 @@ require("@babel/register")({
 
 const React = require("react");
 const ReactDOMServer = require("react-dom/server");
-const App = require("./application").default; // Import your App component
+const App = require("./application").default;
 
 const html = ReactDOMServer.renderToString(React.createElement(App));
 
