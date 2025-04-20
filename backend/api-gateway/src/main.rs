@@ -1,4 +1,4 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder, Error};
+use actix_web::{http::header, web, App, Error, HttpResponse, HttpServer, Responder};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     ClientConfig,
@@ -16,7 +16,6 @@ struct UserRegistration {
     username: String,
     email: String,
 }
-
 //  Handler for user registration
 async fn register_user(
     user: web::Json<UserRegistration>,
@@ -37,14 +36,14 @@ async fn register_user(
         .key(&user_id) 
         .payload(&payload);
 
-    producer.send(record, std::time::Duration::from_secs(5))
+    producer.send(record, std::time::Duration::from_secs(2))
         .await
         .map_err(|(e, _)| {
             eprintln!("Failed to send Kafka message: {:?}", e);
             actix_web::error::ErrorInternalServerError("Failed to send registration event")
         })?;
 
-    Ok(HttpResponse::Ok().body(format!("User registered with ID: {}", user_id)))
+    Ok(HttpResponse::Ok().append_header(header::ContentType::json()).body(format!("User registered with ID: {}", user_id)))
 }
 
 async fn health_check() -> impl Responder {
