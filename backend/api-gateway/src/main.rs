@@ -1,3 +1,4 @@
+mod api;
 use actix_web::{http::header, web, App, Error, HttpResponse, HttpServer, Responder};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
@@ -5,18 +6,17 @@ use rdkafka::{
 };
 use serde::{Deserialize, Serialize};
 
-//  Configuration for Kafka 
+
 const KAFKA_BROKERS: &str = "127.0.0.1:9092";
 const REGISTRATION_TOPIC: &str = "user_registrations";
 
-// User struct for registration
 #[derive(Serialize, Deserialize, Debug)]
 struct UserRegistration {
     user_id: String,
     username: String,
     email: String,
 }
-//  Handler for user registration
+
 async fn register_user(
     user: web::Json<UserRegistration>,
     producer: web::Data<FutureProducer>,
@@ -52,7 +52,6 @@ async fn health_check() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Configure Kafka producer
     let producer: FutureProducer = ClientConfig::new()
         .set("bootstrap.servers", KAFKA_BROKERS)
         .set("message.timeout.ms", "5000")
@@ -64,7 +63,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .app_data(producer_data.clone()) //  Share the Kafka producer
+            .app_data(producer_data.clone())
             .route("/api/health", web::get().to(health_check))
             .route("/api/register", web::post().to(register_user))
     })
