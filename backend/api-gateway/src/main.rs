@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 const KAFKA_BROKERS: &str = "127.0.0.1:9092";
 const REGISTRATION_TOPIC: &str = "user_registrations";
-
+commit
 #[derive(Serialize, Deserialize, Debug)]
 struct UserRegistration {
     user_id: String,
